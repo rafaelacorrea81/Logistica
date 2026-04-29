@@ -1,0 +1,7 @@
+{
+  "name": "Remix: ImobiTech",
+  "description": "Plataforma imobiliária moderna impulsionada por IA para compra, venda e aluguel de imóveis.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

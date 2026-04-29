@@ -1,0 +1,137 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == "rafaela.edtec@gmail.com" && request.auth.token.email_verified == true
+      ); 
+    }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Phase 4: Entity Validations
+    function isValidFavorite(data) {
+      return data.keys().hasAll(['userId', 'propertyId', 'createdAt']) &&
+             data.keys().size() == 3 &&
+             data.userId == request.auth.uid &&
+             data.propertyId is string && data.propertyId.size() <= 128 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidChat(data) {
+      return data.keys().hasAll(['participants', 'lastMessage', 'lastMessageAt', 'createdAt']) &&
+             data.participants is list && data.participants.size() >= 2 && data.participants.size() <= 10 &&
+             data.participants.hasAll([request.auth.uid]) &&
+             data.lastMessage is string && data.lastMessage.size() <= 5000 &&
+             data.lastMessageAt == request.time &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['senderId', 'text', 'createdAt']) &&
+             data.keys().size() == 3 &&
+             data.senderId == request.auth.uid &&
+             data.text is string && data.text.size() <= 5000 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidTestimonial(data) {
+      return data.keys().hasAll(['userId', 'name', 'content', 'rating', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name.size() <= 128 &&
+             data.content is string && data.content.size() <= 2000 &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidProposal(data) {
+      return data.keys().hasAll(['userId', 'propertyId', 'name', 'cpf', 'email', 'phone', 'price', 'paymentMethod', 'status', 'protocol', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.propertyId is string && data.propertyId.size() <= 128 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.cpf is string && data.cpf.size() == 14 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.phone is string && data.phone.size() <= 20 &&
+             data.price is number && data.price > 0 &&
+             data.paymentMethod is string &&
+             data.status == 'pending' &&
+             data.protocol is string && data.protocol.size() <= 20 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidApplication(data) {
+      return data.keys().hasAll(['userId', 'propertyId', 'name', 'cpf', 'email', 'phone', 'startDate', 'contractTerm', 'guaranteeType', 'status', 'protocol', 'createdAt']) &&
+             data.userId == request.auth.uid &&
+             data.propertyId is string && data.propertyId.size() <= 128 &&
+             data.name is string && data.name.size() <= 128 &&
+             data.cpf is string && data.cpf.size() == 14 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.phone is string && data.phone.size() <= 20 &&
+             data.status == 'pending' &&
+             data.protocol is string && data.protocol.size() <= 20 &&
+             data.createdAt == request.time;
+    }
+
+    // Collection Rules
+    match /favorites/{favId} {
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidFavorite(incoming()) && isValidId(favId);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /chats/{chatId} {
+      allow list: if isSignedIn() && resource.data.participants.hasAll([request.auth.uid]);
+      allow get: if isSignedIn() && resource.data.participants.hasAll([request.auth.uid]);
+      allow create: if isSignedIn() && isValidChat(incoming()) && isValidId(chatId);
+      allow update: if isSignedIn() && (
+        (incoming().diff(existing()).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt', 'unreadBy']) && isValidChat(incoming())) ||
+        isAdmin()
+      );
+
+      match /messages/{msgId} {
+        allow list: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAll([request.auth.uid]);
+        allow create: if isSignedIn() && 
+                      get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAll([request.auth.uid]) &&
+                      isValidMessage(incoming()) && isValidId(msgId);
+      }
+    }
+
+    match /testimonials/{testId} {
+      allow list: if true;
+      allow get: if true;
+      allow create: if isSignedIn() && isValidTestimonial(incoming()) && isValidId(testId);
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    match /proposals/{propId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidProposal(incoming()) && isValidId(propId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    match /applications/{appId} {
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidApplication(incoming()) && isValidId(appId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+  }
+}

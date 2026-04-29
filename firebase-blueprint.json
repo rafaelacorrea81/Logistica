@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Favorite": {
+      "title": "Favorite",
+      "description": "User's favorite property",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user" },
+        "propertyId": { "type": "string", "description": "ID of the property" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When it was favorited" }
+      },
+      "required": ["userId", "propertyId", "createdAt"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Conversation between users/agents",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" }, "description": "List of participant UIDs" },
+        "lastMessage": { "type": "string", "description": "Last message text" },
+        "lastMessageAt": { "type": "string", "format": "date-time", "description": "Timestamp of last message" },
+        "unreadBy": { "type": "array", "items": { "type": "string" }, "description": "List of UIDs who haven't read the last message" },
+        "propertyId": { "type": "string", "description": "Optional associated property ID" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When chat was created" }
+      },
+      "required": ["participants", "lastMessage", "lastMessageAt", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Individual message in a chat",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "description": "UID of the sender" },
+        "text": { "type": "string", "description": "Content of the message" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When sent" }
+      },
+      "required": ["senderId", "text", "createdAt"]
+    },
+    "Testimonial": {
+      "title": "Testimonial",
+      "description": "User feedback",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the reviewer" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "content": { "type": "string" },
+        "rating": { "type": "number" },
+        "avatar": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "content", "rating", "createdAt"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Purchase proposal for a property",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "name": { "type": "string" },
+        "cpf": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "price": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "protocol": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "propertyId", "name", "cpf", "email", "phone", "price", "paymentMethod", "status", "protocol", "createdAt"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Rental application for a property",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "name": { "type": "string" },
+        "cpf": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "startDate": { "type": "string" },
+        "contractTerm": { "type": "string" },
+        "guaranteeType": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "declined"] },
+        "protocol": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "propertyId", "name", "cpf", "email", "phone", "startDate", "contractTerm", "guaranteeType", "status", "protocol", "createdAt"]
+    }
+  },
+  "firestore": {
+    "favorites": {
+      "schema": "Favorite",
+      "description": "List of user favorites"
+    },
+    "chats": {
+      "schema": "Chat",
+      "description": "Active conversations"
+    },
+    "chats/{chatId}/messages": {
+      "schema": "Message",
+      "description": "Messages within a chat"
+    },
+    "testimonials": {
+      "schema": "Testimonial",
+      "description": "Public testimonials"
+    },
+    "proposals": {
+      "schema": "Proposal",
+      "description": "Purchase proposals"
+    },
+    "applications": {
+      "schema": "Application",
+      "description": "Rental applications"
+    }
+  }
+}
